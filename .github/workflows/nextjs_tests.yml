@@ -1,0 +1,32 @@
+name: Frontend tests
+
+on:
+    push:
+        branches: ["main"]
+    pull_request:
+        branches: ["main"]
+
+permissions:
+    contents: read
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Use Node.js
+              uses: actions/setup-node@v3
+
+            - name: Install Bun
+              run: npm install -g bun
+
+            - name: Install frontend dependencies
+              working-directory: ./frontend
+              run: bun install
+
+            - name: Run unit tests
+              working-directory: ./frontend
+              run: bun run test
