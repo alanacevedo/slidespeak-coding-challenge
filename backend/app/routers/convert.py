@@ -8,6 +8,8 @@ ALLOWED_CONTENT_TYPES = {
     ".ppt": "application/vnd.ms-powerpoint"
 }
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
 
 @router.post("/convert/")
 async def convert(file: UploadFile):
@@ -23,6 +25,16 @@ async def convert(file: UploadFile):
 
     if file.content_type != ALLOWED_CONTENT_TYPES[filename_extension]:
         raise HTTPException(status_code=400, detail="Uploaded file is not a PowerPoint file")
+
+    contents = await file.read()
+
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Uploaded file is too large")
+
+    await file.seek(0)
 
     url_json = await convert_and_share(file)
 
