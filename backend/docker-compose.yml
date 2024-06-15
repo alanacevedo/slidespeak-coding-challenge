@@ -1,5 +1,16 @@
-version: '3'
-
 services:
-  unoserver:
-    image: libreofficedocker/libreoffice-unoserver:3.19-9c28c22
+    web:
+        build:
+            context: .
+        command: python run.py
+        ports:
+            - 8000:8000
+        env_file:
+            - .env
+        depends_on:
+            - unoserver
+
+    unoserver:
+        image: libreofficedocker/libreoffice-unoserver:3.19-9c28c22
+        ports:
+            - 2004:2004
