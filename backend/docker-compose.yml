@@ -14,3 +14,21 @@ services:
         image: libreofficedocker/libreoffice-unoserver:3.19-9c28c22
         ports:
             - 2004:2004
+
+    redis:
+        image: redis:7-alpine
+        ports:
+            - 6379:6379
+
+    celery_worker:
+        build:
+            context: .
+        command: celery -A celery_worker.celery worker --loglevel=info
+        volumes:
+            - .:/app
+        environment:
+            - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+            - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+        depends_on:
+            - web
+            - redis
