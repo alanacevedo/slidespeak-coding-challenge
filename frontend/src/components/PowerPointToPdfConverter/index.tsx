@@ -1,23 +1,51 @@
-'use client';
+"use client";
 
-import {useState} from "react";
-import {ChooseFileStep} from "@/components/ChooseFileStep";
-import {ConvertFileStep} from "../ConvertFileStep";
-import {DownloadFileStep} from "@/components/DownloadFileStep";
+import { useState } from "react";
+import { ChooseFileStep } from "@/components/ChooseFileStep";
+import { ConvertFileStep } from "@/components/ConvertFileStep";
+import { DownloadFileStep } from "@/components/DownloadFileStep";
 
-type Step = 'CHOOSE_FILE' | 'CONVERT' | 'DOWNLOAD';
+type Step = "CHOOSE_FILE" | "CONVERT" | "DOWNLOAD";
 
 export const PowerPointToPdfConverter = () => {
-  const [currentStep, setCurrentStep] = useState<Step>('CHOOSE_FILE')
+    const [currentStep, setCurrentStep] = useState<Step>("CHOOSE_FILE");
+    const [file, setFile] = useState<File | null>(null);
+    const [fileUrl, setFileUrl] = useState<string>("");
 
-  // TODO: Implement all of the logic to switch between steps and share the application state between the steps.
+    const handleFileSelection = (selectedFile: File) => {
+        setFile(selectedFile);
+        setCurrentStep("CONVERT");
+    };
 
-  switch (currentStep) {
-    case 'CHOOSE_FILE':
-      return <ChooseFileStep />
-    case 'CONVERT':
-      return <ConvertFileStep />
-    case 'DOWNLOAD':
-      return <DownloadFileStep />
-  }
-}
+    const handleConversionComplete = (url: string) => {
+        setFileUrl(url);
+        console.log(url);
+        setCurrentStep("DOWNLOAD");
+    };
+
+    const handleConvertAgain = () => {
+        setFile(null);
+        setFileUrl("");
+        setCurrentStep("CHOOSE_FILE");
+    };
+
+    switch (currentStep) {
+        case "CHOOSE_FILE":
+            return <ChooseFileStep onFileSelect={handleFileSelection} />;
+        case "CONVERT":
+            return (
+                <ConvertFileStep
+                    file={file}
+                    onConversionComplete={handleConversionComplete}
+                    onConversionCancel={handleConvertAgain}
+                />
+            );
+        case "DOWNLOAD":
+            return (
+                <DownloadFileStep
+                    fileUrl={fileUrl}
+                    onConvertAgain={handleConvertAgain}
+                />
+            );
+    }
+};
