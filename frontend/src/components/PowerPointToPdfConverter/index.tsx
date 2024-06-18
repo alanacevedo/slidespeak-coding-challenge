@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ChooseFileStep } from "@/components/ChooseFileStep";
-import { ConvertFileStep } from "@/components/ConvertFileStep";
-import { DownloadFileStep } from "@/components/DownloadFileStep";
+import { ChooseFileStep } from "@/components/PowerPointToPdfConverter/StepComponents/ChooseFileStep";
+import { ConvertFileStep } from "@/components/PowerPointToPdfConverter/StepComponents/ConvertFileStep";
+import { DownloadFileStep } from "@/components/PowerPointToPdfConverter/StepComponents/DownloadFileStep";
 
 type Step = "CHOOSE_FILE" | "CONVERT" | "DOWNLOAD";
 
@@ -19,7 +19,6 @@ export const PowerPointToPdfConverter = () => {
 
     const handleConversionComplete = (url: string) => {
         setFileUrl(url);
-        console.log(url);
         setCurrentStep("DOWNLOAD");
     };
 

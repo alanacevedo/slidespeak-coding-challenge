@@ -1,6 +1,10 @@
 import { FC, useEffect, useState } from "react";
 import { LoadingIndicatorIcon } from "@/icons/LoadingIndicatorIcon";
-import { cn } from "@/utils/cn";
+import { SelectBox } from "./SelectBox";
+import { Loader } from "./Loader";
+import { formatBytes } from "@/utils/formatBytes";
+
+const pollIntervalSeconds = 3;
 
 type ConvertFileStepProps = {
     file: File | null;
@@ -46,11 +50,11 @@ export const ConvertFileStep: FC<ConvertFileStepProps> = ({
             try {
                 const statusEndpoint = `${process.env.NEXT_PUBLIC_API_HOST}/convert/status/${taskId}`;
                 const response = await fetch(statusEndpoint);
-
                 const data = await response.json();
 
                 if (data.status === "pending") return;
 
+                // data is ready, or an error ocurred
                 clearInterval(interval);
                 setIsConverting(false);
 
@@ -66,21 +70,11 @@ export const ConvertFileStep: FC<ConvertFileStepProps> = ({
                 clearInterval(interval);
                 setIsConverting(false);
             }
-        }, 5000); // Check every 5 seconds
+        }, pollIntervalSeconds * 1000);
 
+        // cleanup when unmounted
         return () => clearInterval(interval);
     }, [taskId, onConversionComplete]);
-
-    const formatBytes = (bytes: number, decimals = 2) => {
-        if (bytes === 0) return "0 Bytes";
-        const k = 1024;
-        const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ["Bytes", "KB", "MB", "GB"];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return (
-            parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
-        );
-    };
 
     return (
         <div className="flex flex-col gap-4 rounded-xl bg-white p-6 shadow-md">
@@ -129,47 +123,3 @@ export const ConvertFileStep: FC<ConvertFileStepProps> = ({
         </div>
     );
 };
-
-type CompressionSelectBoxProps = {
-    checked?: boolean;
-    value: string;
-    description: string;
-};
-
-const SelectBox: FC<CompressionSelectBoxProps> = ({
-    checked = true,
-    value,
-    description,
-}) => (
-    <label className="group flex cursor-pointer gap-2 rounded-xl border-2 border-blue-200 bg-blue-25 p-4">
-        <input
-            type="radio"
-            name="compression"
-            className="hidden"
-            defaultChecked={checked}
-        />
-        <div>
-            <div className="grid size-4 place-items-center rounded-full border border-blue-600">
-                <div
-                    className={cn(
-                        "h-2 w-2 rounded-full bg-blue-600 transition-opacity",
-                        {
-                            "opacity-0 group-hover:opacity-80": !checked,
-                        }
-                    )}
-                />
-            </div>
-        </div>
-        <div className="flex flex-col gap-0.5">
-            <span className="text-sm leading-4 text-blue-800">{value}</span>
-            <span className="text-sm text-blue-700">{description}</span>
-        </div>
-    </label>
-);
-
-const Loader = () => (
-    <div className="flex w-full items-center gap-2 rounded-xl border border-gray-300 p-4">
-        <div className="size-7 animate-spin-pretty rounded-full border-4 border-solid border-t-blue-500" />
-        <p className="text-sm text-gray-700">Compressing your file...</p>
-    </div>
-);

@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom'
 import { render, fireEvent, act } from "@testing-library/react";
-import { ChooseFileStep } from "@/components/ChooseFileStep";
+import { ChooseFileStep } from "@/components/PowerPointToPdfConverter/StepComponents/ChooseFileStep";
+
 
 
 function mockData(files) {
