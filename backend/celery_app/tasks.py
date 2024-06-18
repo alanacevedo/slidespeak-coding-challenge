@@ -1,31 +1,26 @@
-
-from app.utils.s3_utils import S3Manager
-from celery import Celery
+from celery import shared_task
 from io import BytesIO
-from datetime import timedelta
-from dotenv import load_dotenv
 import os
 import requests
+from app.utils.s3_utils import S3Manager
+from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 
-celery = Celery(__name__)
-celery.conf.broker_url = os.getenv("CELERY_BROKER_URL")
-celery.conf.result_backend = os.getenv("CELERY_RESULT_BACKEND")
-
 UNOSERVER_URL = os.getenv("UNOSERVER_URL")
 PRESIGNED_URL_EXPIRATION_DAYS = os.getenv("PRESIGNED_URL_EXPIRATION_DAYS")
-
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = os.getenv("AWS_REGION")
 AWS_S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
+TIMEOUT_SECONDS = 60
 
 
-@celery.task(name="convert_file_task")
+@shared_task(name="convert_file_task", track_started=True)
 def convert_file_and_upload__task(filename: str, converted_filename: str) -> str:
     """
-    First downloads the powerpoint file from S3.
+    First downloads the PowerPoint file from S3.
     Sends the file to unoserver via POST request to convert it to .pdf.
     Uploads the converted file to S3, generates a presigned URL, and then returns it.
     """
@@ -39,17 +34,14 @@ def convert_file_and_upload__task(filename: str, converted_filename: str) -> str
 
     file = s3_manager.download_file_from_s3(filename)
 
-    form_data = {
-        "convert-to": "pdf",
-    }
-    files = {
-        "file": file
-    }
-
     unoserver_endpoint = UNOSERVER_URL
 
     try:
-        conversion_response = requests.post(unoserver_endpoint, data=form_data, files=files)
+        conversion_response = requests.post(unoserver_endpoint,
+                                            data={"convert-to": "pdf"},
+                                            files={"file": file},
+                                            timeout=TIMEOUT_SECONDS
+                                            )
         conversion_response.raise_for_status()
     except requests.exceptions.RequestException as exc:
         raise Exception(f"HTTP error: {str(exc)}")
@@ -61,4 +53,7 @@ def convert_file_and_upload__task(filename: str, converted_filename: str) -> str
     s3_manager.upload_file_to_s3(converted_file, converted_filename)
     converted_file_url = s3_manager.generate_presigned_url(converted_filename, expiration_seconds)
 
+    # Uncomment to test status polling
+    # from time import sleep
+    # sleep(20)
     return converted_file_url

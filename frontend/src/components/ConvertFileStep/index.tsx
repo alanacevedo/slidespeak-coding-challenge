@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { LoadingIndicatorIcon } from "@/icons/LoadingIndicatorIcon";
 import { cn } from "@/utils/cn";
 
@@ -14,6 +14,7 @@ export const ConvertFileStep: FC<ConvertFileStepProps> = ({
     onConversionCancel,
 }) => {
     const [isConverting, setIsConverting] = useState(false);
+    const [taskId, setTaskId] = useState<string | null>(null);
 
     if (!file) return null;
 
@@ -21,24 +22,54 @@ export const ConvertFileStep: FC<ConvertFileStepProps> = ({
         setIsConverting(true);
 
         try {
-            const apiEndpoint = `${process.env.NEXT_PUBLIC_API_HOST}/convert`;
+            const convertEndpoint = `${process.env.NEXT_PUBLIC_API_HOST}/convert`;
             const formData = new FormData();
             formData.append("file", file);
 
-            const response = await fetch(apiEndpoint, {
+            const response = await fetch(convertEndpoint, {
                 method: "POST",
                 body: formData,
             });
 
             const data = await response.json();
-            const url: string = data["converted_file_url"];
-            onConversionComplete(url);
+            const taskId: string = data["task_id"];
+            setTaskId(taskId);
         } catch (error) {
             console.error("Conversion error:", error);
-        } finally {
-            setIsConverting(false);
         }
     };
+
+    useEffect(() => {
+        if (!taskId) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const statusEndpoint = `${process.env.NEXT_PUBLIC_API_HOST}/convert/status/${taskId}`;
+                const response = await fetch(statusEndpoint);
+
+                const data = await response.json();
+
+                if (data.status === "pending") return;
+
+                clearInterval(interval);
+                setIsConverting(false);
+
+                if (data.status === "success") {
+                    onConversionComplete(data.converted_file_url);
+                } else {
+                    // TODO: better error handling
+                    alert("Conversion error");
+                }
+            } catch (error) {
+                console.error("Status check error:", error);
+                alert("Conversion error");
+                clearInterval(interval);
+                setIsConverting(false);
+            }
+        }, 5000); // Check every 5 seconds
+
+        return () => clearInterval(interval);
+    }, [taskId, onConversionComplete]);
 
     const formatBytes = (bytes: number, decimals = 2) => {
         if (bytes === 0) return "0 Bytes";

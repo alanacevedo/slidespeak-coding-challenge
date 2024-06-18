@@ -1,10 +1,11 @@
 import os
 from ..utils.s3_utils import S3Manager
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from dotenv import load_dotenv
 from uuid import uuid4
 from datetime import datetime
-from celery_worker import convert_file_and_upload__task
+from celery_app.tasks import convert_file_and_upload__task
+from celery.result import AsyncResult
 
 load_dotenv()
 
@@ -16,10 +17,10 @@ AWS_REGION = os.getenv("AWS_REGION")
 AWS_S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET_NAME")
 
 
-async def convert_and_share(file: UploadFile):
+def start_conversion(file: UploadFile) -> dict:
     """
-    Converts the powerpoint file to a pdf file with the unoserver API.
-    Uploads both files to S3, and then generates and returns presigned url for the converted file.
+    Uploads file to S3, and enqueues the Celery conversion task.
+    Returns the task id.
     """
 
     s3_manager = S3Manager(
@@ -33,11 +34,27 @@ async def convert_and_share(file: UploadFile):
     s3_manager.upload_file_to_s3(file.file, filename)
 
     task = convert_file_and_upload__task.delay(filename, converted_filename)
-    converted_file_url = task.get()
 
     return {
-        "converted_file_url": converted_file_url
+        "task_id": task.id
     }
+
+
+def get_conversion_status(task_id: str) -> dict:
+    """
+    Retrieves the result of a Celery conversion task.
+    """
+
+    task = AsyncResult(task_id)
+
+    if task.ready():
+        if task.successful():
+            return {"status": "success", "converted_file_url": task.get()}
+        else:
+            task.forget()
+            raise HTTPException(status_code=500, detail=str(task.result))
+
+    return {"status": "pending", "message": "Task is still processing"}
 
 
 def get_filenames(original_filename: str) -> tuple[str, str]:

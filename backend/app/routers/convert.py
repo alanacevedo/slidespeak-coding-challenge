@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, HTTPException
-from ..services.convert import convert_and_share
+from ..services.convert import start_conversion, get_conversion_status
 
 router = APIRouter()
 
@@ -11,7 +11,7 @@ ALLOWED_CONTENT_TYPES = {
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
-@router.post("/convert/")
+@router.post("/convert/", status_code=202)
 async def convert(file: UploadFile):
     """
     Converts the powerpoint file to a pdf file with the unoserver API.
@@ -36,6 +36,17 @@ async def convert(file: UploadFile):
 
     await file.seek(0)
 
-    url_json = await convert_and_share(file)
+    task_id_json = start_conversion(file)
 
-    return url_json
+    return task_id_json
+
+
+@router.get("/convert/status/{task_id}")
+async def conversion_status(task_id: str):
+    """
+    Checks the status of the conversion task and returns the result if available.
+    """
+
+    result = get_conversion_status(task_id)
+
+    return result
